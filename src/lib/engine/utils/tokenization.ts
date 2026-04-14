@@ -1,0 +1,128 @@
+import { normalizeArabic } from '../utils/normalization';
+import { InvalidModeError } from '../errors';
+import type { VerseInput, MorphologyAya, WordMap } from '../types';
+
+/**
+ * Common Arabic particles and prepositions that are often excluded from similarity analysis
+ * to focus on core meaningful words (Mutashabihat).
+ */
+export const ARABIC_STOP_WORDS = new Set([
+  'في', 'من', 'على', 'إلى', 'إلا', 'هو', 'هي', 'ذا', 'الذي', 'الذين', 
+  'ما', 'إن', 'أن', 'إنما', 'لي', 'لك', 'له', 'لهم', 'كم', 'منهم', 
+  'عن', 'قد', 'ذلك', 'هذا', 'هذه', 'هؤلاء', 'إذ', 'إذا', 'إذما', 'لو', 
+  'لولا', 'لوما', 'كل', 'بعض', 'أي', 'بم', 'فلما', 'ثم', 'أو', 'أم', 'حتى',
+  'و', 'ف', 'ب', 'ل', 'ك', 'لا'
+]);
+
+/**
+ * Checks if a word is an Arabic stop word.
+ */
+export const isStopWord = (word: string): boolean => {
+  const normalized = normalizeArabic(word);
+  return ARABIC_STOP_WORDS.has(normalized);
+};
+
+/**
+ * Extracts non-stop-word tokens from a normalized text string.
+ */
+export const getUncommonTokens = (text: string): string[] => {
+  if (!text) return [];
+  const tokens = text.split(/\s+/).map((t) => t.replace(/[^\u0621-\u064A]/g, ''));
+  return tokens.filter((t) => t && !isStopWord(t));
+};
+
+
+/**
+ * Identifies and returns the specific words from a verse that match the search criteria.
+ *
+ * Returns empty array if `cleanQuery` is null or empty.
+ * * This function supports three matching modes:
+ * - 'text': Matches the literal characters of the word.
+ * - 'lemma': Matches the word's dictionary/base form.
+ * - 'root': Matches the word's Arabic root.
+ *
+ * @param verse - The verse object containing the text to be scanned
+ * @param mode - the search mode
+ * @param targetLemma - The base form to look for (required for lemma mode)
+ * @param targetRoot - The Arabic root to look for (required for root mode).
+ * @param cleanQuery - the normalized query string from the user
+ * @param morphologyMap - A map of verse IDs to their morphological data.
+ * @param wordMap - (Optional) A map for looking up lemmas and roots of specific words.
+ * @returns An array of unique matching words or tokens found in the verse.
+ *
+ * @example
+ * getPositiveTokens(verse, 'text', undefined, undefined, 'الله', MorphMap)
+ * // Returns ["لله", "الله"]
+ */
+export const getPositiveTokens = (
+  verse: VerseInput,
+  mode: 'text' | 'lemma' | 'root',
+  targetLemma: string | undefined,
+  targetRoot: string | undefined,
+  cleanQuery: string | undefined,
+  morphologyMap: Map<number, MorphologyAya>,
+  wordMap?: WordMap,
+): string[] => {
+  // Validate mode parameter
+  const validModes = ['text', 'lemma', 'root'];
+  if (!validModes.includes(mode)) {
+    throw new InvalidModeError(mode);
+  }
+
+  if (!cleanQuery) return [];
+
+  const normalizedQuery = normalizeArabic(cleanQuery);
+  if (!normalizedQuery) return [];
+
+  if (mode === 'text') {
+    const words = (verse.standard || '')
+      .split(/\s+/)
+      .map((w) => w.replace(/[^\u0621-\u064A]/g, ''));
+    return Array.from(new Set(words.filter((w) => normalizeArabic(w).includes(normalizedQuery))));
+  }
+
+  // New Logic: Scan verse words using wordMap to find exact words to highlight
+  if (wordMap && (mode === 'lemma' || mode === 'root')) {
+    const words = (verse.standard || '').split(/\s+/);
+    const matchedWords: string[] = [];
+
+    for (const word of words) {
+      const cleanWord = word.replace(/[^\u0621-\u064A]/g, '');
+      const normalizedWord = normalizeArabic(cleanWord);
+      const entry = wordMap.get(normalizedWord);
+
+      if (entry) {
+        if (mode === 'lemma' && targetLemma && entry.lemma) {
+          if (normalizeArabic(entry.lemma).includes(normalizeArabic(targetLemma))) {
+            matchedWords.push(word);
+          }
+        }
+        if (mode === 'root' && targetRoot && entry.root) {
+          if (normalizeArabic(entry.root).includes(normalizeArabic(targetRoot))) {
+            matchedWords.push(word);
+          }
+        }
+      }
+    }
+
+    if (matchedWords.length > 0) {
+      return Array.from(new Set(matchedWords));
+    }
+  }
+
+  // Fallback to MorphologyMap (Old behavior: returns the lemma/root string itself, not the verse word)
+  const morph = morphologyMap.get(verse.gid);
+  if (!morph) return [];
+
+  if (mode === 'lemma' && targetLemma) {
+    const normTarget = normalizeArabic(targetLemma);
+    return Array.from(new Set(morph.lemmas.filter((l) => normalizeArabic(l).includes(normTarget))));
+  }
+
+  if (mode === 'root' && targetRoot) {
+    const normTarget = normalizeArabic(targetRoot);
+    return Array.from(new Set(morph.roots.filter((r) => normalizeArabic(r).includes(normTarget))));
+  }
+
+  return [];
+};
