@@ -24,7 +24,7 @@ const Icon = ({ name, size = 20, className = "" }) => {
 // Match Type Badge Component
 const MatchTypeBadge = ({ type }) => {
     const configs = {
-        exact: { label: 'تطابق تام', bg: 'bg-emerald-100', text: 'text-emerald-700', icon: 'check-circle' },
+        exact: { label: 'آية مشابهة', bg: 'bg-emerald-100', text: 'text-emerald-700', icon: 'check-circle' },
         lemma: { label: 'اشتقاق لغوي', bg: 'bg-blue-100', text: 'text-blue-700', icon: 'git-branch' },
         root: { label: 'جذر مشترك', bg: 'bg-amber-100', text: 'text-amber-700', icon: 'hash' },
         similarity: { label: 'متشابهات', bg: 'bg-purple-100', text: 'text-purple-700', icon: 'copy' },
@@ -166,6 +166,31 @@ const VerseDiff = ({ text, comparisonText, highlightedTerms = [], large = false 
     );
 };
 
+// Helper to calculate similarity score on the fly
+const SimilarityScore = ({ v, refText }) => {
+    const score = useMemo(() => {
+        if (v.score) return v.score;
+        if (v.overlap) return v.overlap;
+        if (!refText) return 0;
+
+        // Fallback calculation similar to Engine's overlap ratio
+        const normalize = (val) => (val || "").replace(/[\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E8\u06EA-\u06FC]/g, "").replace(/[إأآٱ]/g, "ا").replace(/[ؤئء]/g, "ء").replace(/ة/g, "ه").replace(/ى/g, "ي");
+        const words = normalize(v.text || v.standard).split(/\s+/).filter(Boolean);
+        const refWords = normalize(refText).split(/\s+/).filter(Boolean);
+        const refSet = new Set(refWords);
+        const matches = words.filter(w => refSet.has(w)).length;
+        return matches / Math.max(words.length, refWords.length);
+    }, [v, refText]);
+
+    if (!score) return null;
+
+    return (
+        <div className="flex items-center bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-2xl border border-emerald-100 font-black text-xs font-cairo shadow-sm">
+            {Math.round(score * 100)}%
+        </div>
+    );
+};
+
 // Sub-component for Similarity Card
 const SimilarityCard = ({ v, refVerseText, isPotential = false, useUthmani = false }) => (
     <article
@@ -176,7 +201,7 @@ const SimilarityCard = ({ v, refVerseText, isPotential = false, useUthmani = fal
             <div className="flex items-center gap-3">
                 <div className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-700 text-slate-500 font-bold text-[10px]">{v.gid}</div>
                 <div className="flex flex-col">
-                    <h4 className="text-lg font-black text-slate-800 dark:text-slate-200 font-cairo leading-none mb-1">
+                    <h4 className="text-lg font-black text-slate-800 dark:text-slate-200 font-cairo leading-none mb-2">
                         {v.sura_name || v.suraName} | {v.aya_id || v.verseId}
                     </h4>
                     <div className="flex gap-2">
@@ -191,6 +216,7 @@ const SimilarityCard = ({ v, refVerseText, isPotential = false, useUthmani = fal
                     </div>
                 </div>
             </div>
+            {!isPotential && <SimilarityScore v={v} refText={refVerseText} />}
         </div>
         <VerseDiff text={(useUthmani && v.uthmani) ? v.uthmani : (v.text || v.standard)} comparisonText={refVerseText} />
     </article>
@@ -234,7 +260,8 @@ const ComparisonDetail = ({ gid, onBack, searchResults = [], query = "", useUthm
     const handleIntensityChange = (e) => {
         const val = parseInt(e.target.value);
         setIntensity(val);
-        refreshSimilarities(val);
+        // Invert logic: 1 (Right) -> 10 (Strict), 10 (Left) -> 1 (Wide)
+        refreshSimilarities(11 - val);
     };
 
     const refVerseText = useMemo(() => {
@@ -307,23 +334,32 @@ const ComparisonDetail = ({ gid, onBack, searchResults = [], query = "", useUthm
                         <h3 className="text-xl font-black font-cairo">المواضع المشابهة</h3>
                     </div>
 
-                    <div className="flex items-center gap-5 bg-white shadow-xl shadow-emerald-900/5 p-3 px-6 rounded-3xl border border-emerald-50">
-                        <div className="flex flex-col min-w-[100px]">
-                            <span className="text-[10px] text-emerald-500 font-black uppercase tracking-wider">نطاق البحث</span>
-                            <span className="text-sm font-bold text-emerald-800">
-                                {intensity <= 3 ? 'تشابه عريض' : intensity >= 8 ? 'متشابهات تامة' : 'مطابقة متوازنة'}
-                            </span>
+                    <div className="flex flex-col gap-4 bg-white shadow-xl shadow-emerald-900/5 p-5 px-6 rounded-[2rem] border border-emerald-50 md:min-w-[320px]">
+                        <div className="flex justify-between items-center">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-emerald-500 font-black uppercase tracking-wider">درجة المطابقة</span>
+                                <span className="text-sm font-bold text-emerald-800">
+                                    {intensity <= 3 ? 'مطابقة دقيقة' : intensity >= 8 ? 'تشابه عريض' : 'مطابقة متوازنة'}
+                                </span>
+                            </div>
+                            <div className="w-10 h-10 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-100 text-sm font-black text-white">
+                                {intensity}
+                            </div>
                         </div>
-                        <input
-                            type="range"
-                            min="1"
-                            max="10"
-                            value={intensity}
-                            onChange={handleIntensityChange}
-                            className="w-full md:w-48 accent-emerald-600 h-2 bg-emerald-50 rounded-lg appearance-none cursor-pointer"
-                        />
-                        <div className="w-10 h-10 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-100 text-sm font-black text-white">
-                            {intensity}
+                        
+                        <div className="relative pt-2">
+                            <input
+                                type="range"
+                                min="1"
+                                max="10"
+                                value={intensity}
+                                onChange={handleIntensityChange}
+                                className="w-full accent-emerald-600 h-2 bg-emerald-50 rounded-lg appearance-none cursor-pointer"
+                            />
+                            <div className="flex justify-between mt-2 text-[9px] font-black font-cairo text-slate-400 uppercase tracking-tighter">
+                                <span>دقيق (نتائج أقل)</span>
+                                <span>واسع (نتائج أكثر)</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -464,7 +500,7 @@ const App = () => {
                     <div className="animate-in fade-in duration-500">
                         {/* Search Tip Banner */}
                         <Hint type="info" title="نصيحة للبحث الدقيق" className="mb-6">
-                            للحصول على أفضل النتائج، ابحث مباشرة عن <span className="underline decoration-emerald-400 font-bold">العبارة التي تسبب لك إشكالاً</span>.
+                            لتحقيق أفضل تطابق، أدخل <span className="underline decoration-emerald-400 font-bold">النص المراد البحث عنه بدقة</span>.
                         </Hint>
 
                         <div className="relative mb-8">
@@ -494,9 +530,15 @@ const App = () => {
                                                 <h3 className="text-lg font-black text-emerald-900 dark:text-emerald-300 font-cairo">سورة {verse.suraName || verse.sura_name} | {verse.verseId || verse.aya_id}</h3>
                                             </div>
                                         </div>
-                                        <Icon name="chevron-left" className="text-slate-200 group-hover:text-emerald-500 mt-2" />
                                     </div>
                                     <VerseDiff text={useUthmani ? verse.uthmani : (verse.text || verse.standard)} highlightedTerms={[query]} />
+                                    <div className="flex justify-between items-center mt-6">
+                                        <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 group-hover:translate-x-[-4px] transition-transform">
+                                            <Icon name="layers" size={14} />
+                                            <span>مواضع التشابه</span>
+                                            <Icon name="chevron-left" size={14} />
+                                        </div>
+                                    </div>
                                 </article>
                             ))}
                         </div>
