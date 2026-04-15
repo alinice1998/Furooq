@@ -1,4 +1,4 @@
-const CACHE_NAME = 'furooq-v8';
+const CACHE_NAME = 'furooq-v10';
 const ASSETS = [
   'index.html',
   'style.css',
@@ -13,7 +13,10 @@ const ASSETS = [
   'fonts/amiri-700.ttf',
   'fonts/cairo-400.ttf',
   'fonts/cairo-700.ttf',
-  'fonts/cairo-900.ttf',
+  'fonts/cairo-900.ttf'
+];
+
+const EXTERNAL_ASSETS = [
   'https://unpkg.com/react@18/umd/react.production.min.js',
   'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
   'https://unpkg.com/@babel/standalone/babel.min.js',
@@ -24,7 +27,20 @@ const ASSETS = [
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) => {
+      const localPromise = cache.addAll(ASSETS);
+      const externalPromise = Promise.all(
+        EXTERNAL_ASSETS.map(url => 
+          fetch(url)
+            .then(res => {
+              // Only cache valid responses (handles redirects gracefully by verifying ok)
+              if (res.ok) cache.put(url, res);
+            })
+            .catch(err => console.error("Failed to precache external asset", url))
+        )
+      );
+      return Promise.all([localPromise, externalPromise]);
+    })
   );
 });
 
@@ -47,20 +63,24 @@ self.addEventListener('fetch', (event) => {
   const isDataJson = url.pathname.includes('/data/') && url.pathname.endsWith('.json');
 
   if (isLocal && !isDataJson) {
-      // Network-First strategy for local HTML/JS/CSS files -> Ensures instant live updates!
+      // Stale-While-Revalidate strategy: INSTANT load from cache, then update from network
       event.respondWith(
-        fetch(event.request)
-          .then(networkResponse => {
+        caches.match(event.request).then((cachedResponse) => {
+          const fetchPromise = fetch(event.request).then(networkResponse => {
             if (networkResponse && networkResponse.status === 200) {
               const responseToCache = networkResponse.clone();
               caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseToCache));
             }
             return networkResponse;
-          })
-          .catch(() => caches.match(event.request)) // Fallback to cache if offline
+          }).catch((err) => {
+            console.log("Background network update failed", err);
+          });
+
+          return cachedResponse || fetchPromise.then(res => res || new Response('Offline', {status: 503}));
+        })
       );
   } else {
-      // Cache-First strategy for external CDNs, fonts, and large JSON files
+      // Cache-First strategy: Use cache, fetch ONLY if not in cache (saves bandwidth)
       event.respondWith(
         caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) return cachedResponse;
@@ -71,7 +91,7 @@ self.addEventListener('fetch', (event) => {
             }
             return networkResponse;
           }).catch(() => {
-            console.log("Fetch failed; returning offline fallback.", event.request.url);
+            return new Response('Offline', {status: 503});
           });
         })
       );
