@@ -1,4 +1,4 @@
-const CACHE_NAME = 'furooq-v7';
+const CACHE_NAME = 'furooq-v8';
 const ASSETS = [
   'index.html',
   'style.css',
@@ -9,12 +9,16 @@ const ASSETS = [
   'pwa-512x512.png',
   'apple-touch-icon.png',
   'logo.png',
+  'fonts/amiri-400.ttf',
+  'fonts/amiri-700.ttf',
+  'fonts/cairo-400.ttf',
+  'fonts/cairo-700.ttf',
+  'fonts/cairo-900.ttf',
   'https://unpkg.com/react@18/umd/react.production.min.js',
   'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
   'https://unpkg.com/@babel/standalone/babel.min.js',
   'https://unpkg.com/lucide@latest',
-  'https://cdn.tailwindcss.com',
-  'https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;700;900&display=swap'
+  'https://cdn.tailwindcss.com'
 ];
 
 self.addEventListener('install', (event) => {
