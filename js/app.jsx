@@ -423,6 +423,25 @@ const App = () => {
     const [selectedGid, setSelectedGid] = useState(null);
     const [error, setError] = useState(null);
     const [useUthmani, setUseUthmani] = useState(false);
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+    useEffect(() => {
+        const handleBeforeInstallPrompt = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    }, []);
+
+    const handleInstallClick = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setDeferredPrompt(null);
+        }
+    };
 
     useEffect(() => {
         const init = async () => {
@@ -479,6 +498,16 @@ const App = () => {
                     <h1 className="text-3xl font-black text-emerald-900 dark:text-emerald-400 font-cairo tracking-tight">فُروق</h1>
                     <p className="text-emerald-600/80 text-xs font-bold font-cairo uppercase tracking-widest">البحث البصري في المتشابهات</p>
                 </div>
+
+                {deferredPrompt && (
+                    <button 
+                        onClick={handleInstallClick} 
+                        className="mt-6 flex items-center justify-center gap-2 mx-auto bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-full transition-all duration-300 font-cairo font-bold shadow-lg shadow-emerald-600/20 hover:shadow-emerald-600/40 active:scale-95"
+                    >
+                        <Icon name="download-cloud" size={18} />
+                        تثبيت التطبيق على الجهاز
+                    </button>
+                )}
 
                 {/* Uthmani Toggle Switch */}
                 <div className="mt-8 inline-flex items-center gap-3 bg-white dark:bg-slate-800 p-2 px-4 rounded-2xl shadow-sm border border-emerald-50 dark:border-slate-700">
