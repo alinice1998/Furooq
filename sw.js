@@ -1,4 +1,4 @@
-const CACHE_NAME = 'furooq-v4';
+const CACHE_NAME = 'furooq-v5';
 const ASSETS = [
   'index.html',
   'style.css',

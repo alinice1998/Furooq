@@ -532,7 +532,7 @@ const App = () => {
                                         </div>
                                     </div>
                                     <VerseDiff text={useUthmani ? verse.uthmani : (verse.text || verse.standard)} highlightedTerms={[query]} />
-                                    <div className="flex justify-between items-center mt-6">
+                                    <div className="flex justify-end items-center mt-6">
                                         <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 group-hover:translate-x-[-4px] transition-transform">
                                             <Icon name="layers" size={14} />
                                             <span>مواضع التشابه</span>
