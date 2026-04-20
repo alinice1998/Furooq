@@ -290,7 +290,7 @@ const Engine = (() => {
                 const exacts = wordIndex.get(token) || new Set();
                 exacts.forEach(gid => {
                     const m = matches.get(gid) || { score: 0, matchType: 'exact' };
-                    m.score += 5;
+                    m.score += 3;
                     matches.set(gid, m);
                 });
 
@@ -303,7 +303,7 @@ const Engine = (() => {
                         lemmas.forEach(gid => {
                             const m = matches.get(gid) || { score: 0, matchType: 'lemma' };
                             if (m.matchType !== 'exact') m.matchType = 'lemma';
-                            m.score += 3;
+                            m.score += 2;
                             matches.set(gid, m);
                         });
                     }

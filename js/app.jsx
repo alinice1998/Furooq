@@ -552,11 +552,19 @@ const App = () => {
                                     className="p-8 rounded-[2.5rem] bg-white dark:bg-slate-800 shadow-lg border-2 border-transparent hover:border-emerald-500 cursor-pointer transition-all group active:scale-95"
                                     onClick={() => { setSelectedGid(verse.gid); setView('detail'); }}
                                 >
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="flex flex-col gap-2">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 font-black text-[10px] group-hover:bg-emerald-600 group-hover:text-white transition-colors tracking-tighter">{verse.gid}</div>
-                                                <h3 className="text-lg font-black text-emerald-900 dark:text-emerald-300 font-cairo">سورة {verse.suraName || verse.sura_name} | {verse.verseId || verse.aya_id}</h3>
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300 font-black text-[10px] group-hover:bg-emerald-600 group-hover:text-white transition-colors tracking-tighter">{verse.gid}</div>
+                                            <div className="flex flex-col">
+                                                <h3 className="text-lg font-black text-emerald-900 dark:text-emerald-300 font-cairo leading-none mb-1">
+                                                    سورة {verse.suraName || verse.sura_name} | {verse.verseId || verse.aya_id}
+                                                </h3>
+                                                <div className="flex gap-2">
+                                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-md border border-amber-200/30 text-[9px] font-black">
+                                                        <Icon name="sparkles" size={8} />
+                                                        {verse.matchScore?.toFixed(1)} نقطة
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

@@ -216,7 +216,14 @@ const App = () => {
                       <p className="text-[10px] text-slate-400 font-medium">الآية رقم {verse.verseId}</p>
                     </div>
                   </div>
-                </div>
+
+                  {/* Match Score Badge */}
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="px-2 py-1 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-lg border border-amber-200/50 flex items-center gap-1.5">
+                      <Sparkles size={10} />
+                      <span className="text-[10px] font-black">{verse.matchScore?.toFixed(1)} نقطة</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Verse Text Area */}
